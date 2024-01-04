@@ -1,129 +1,219 @@
-"""Subclasses the bot."""
-from pathlib import Path
-from logging import getLogger
-from time import time
+"""Subclasses bot to add extra functionalities."""
+# Standard Libraries.
+from enum import Enum
+import pathlib
+import time
+
+# Third Party Libraries.
 from discord.ext import commands
+
+# Project Modules.
+from bot.constants import InternalConstants
+
+
+class ExtensionActions(Enum):
+    """Actions possible for extensions.
+
+    Attributes:
+    LOAD
+        Load extension to the bot.
+    RELOAD
+        Reload extension in the bot.
+        UNLOAD
+        Unload extension from the bot.
+    """
+
+    LOAD = "load"
+    RELOAD = "reload"
+    UNLOAD = "unload"
+
+
+class ExtensionError(Exception):
+    """Exception when an extension errors.
+
+    Attributes:
+    name
+        The name of extension.
+    """
+
+    name: str
+
+    def __init__(self, name: str, *args) -> None:
+        super().__init__(args)
+        self.name = name
+
+
+ExtensionsList = list[str]
+"""Represent a list of extensions names."""
+ExtensionUpdateResponse = tuple[bool, list[ExtensionError]]
+"""Represent reponse after performing action on extenions.
+
+    success
+        Specifies whether loading was successful or not.
+    errors
+        Dictionary contains extension name as key and value as error occured.
+"""
 
 
 class Bot(commands.Bot):
-    """Subclass of commands.Bot with some extra attributes and methods."""
+    """Subclasses bot to add extra attributes and methods.
 
-    def __init__(self, command_prefix=..., help_command=..., **options):
-        super().__init__(command_prefix, help_command, **options)
-        self.logger = getLogger(__package__)
-        self.logger.debug("Starting bot.")
-        self.load_all_extensions()
-        self.start_time = round(time())
+    Attributes:
+    start_time
+        The time bot started in seconds since the Epoch.
+
+    Methods:
+    on_ready
+        Runs when bot is ready.
+    _manage_all_extensions
+        Manage all extensions.
+    """
+
+    start_time: int
+
+    def __init__(self, command_prefix=None, **kwargs) -> None:
+        super().__init__(command_prefix, **kwargs)
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
-        """Fires when bot is ready."""
-        print(f"{self.user} ready!")
-        self.logger.info("Bot is ready.")
+        """Runs when bot is ready. It saves the time and logs the message to console"""
+        self.start_time = round(time.time())
+        print(f"{self.user} is ready!")
+        await self.load_all_extensions()
 
-    def _manage_all_extensions(
+    async def _manage_all_extensions(
         self,
-        action: str,
-        exclude: list[str] = None,
-    ) -> (bool, {}):
-        """Manage all extensions from ext folder
+        action: ExtensionActions,
+        exclude: ExtensionsList | None = None,
+        include_only: ExtensionsList | None = None,
+    ) -> ExtensionUpdateResponse:
+        """Can perform load, unload, reload action on extensions.
+        Its assummed that exts folder is categorized.\n
+        exts/
+            category1/
+                commandName1.py
+                commandName2.py
+            category2/
+                commandName3.py
+                commandName4.py
 
-        Parameters
-        -----------
-        `exclude ([str])`:
-        The list of extensions that should be excluded from loading.
-
-        Returns
-        --------
-        `was_success (boolean)`:
-        Specifies whether loading was successful or not.
+        Args:
+        action
+            Action to perform on extensions.
+        exclude
+            The list of extensions name that should be excluded from loading.
         """
 
-        # Replaces None with an empty list
-        # Cant add in default parameter value (W0102)
-        if exclude is None:
-            exclude = []
-
         # Dictionary for storing errors
-        errors = {}
+        errors = []
 
         # Gets all extensions and also log it
-        path = Path("bot/exts/")
-        extensions = list(path.glob("**/[!_]*.py"))
-        self.logger.debug("%sing %ss", action, extensions)
+        path = pathlib.Path(InternalConstants.EXTENSIONS_PATH)
+        extension_paths = list(path.glob("**/[!_]*.py"))
 
         # Goes through each extension to perform action
-        for extension in extensions:
+        for extension_path in extension_paths:
             # Removes .py and replaces "/" with "."
-            extension = str(extension).replace("/", ".")[:-3]
+            extension = str(extension_path).replace("/", ".")[:-3]
 
             # Check if extension is in ignore list
-            if extension in exclude:
+            if exclude and extension in exclude:
+                continue
+
+            # Check if extension is in include list
+            if include_only and extension not in include_only:
                 continue
 
             # Tries to perform action on the extension
             try:
                 match action:
-                    case "load":
-                        self.load_extension(extension)
-                    case "reload":
-                        self.reload_extension(extension)
-                    case "unload":
-                        self.unload_extension(extension)
+                    case ExtensionActions.LOAD:
+                        await self.load_extension(extension)
+                    case ExtensionActions.RELOAD:
+                        await self.reload_extension(extension)
+                    case ExtensionActions.UNLOAD:
+                        await self.unload_extension(extension)
                     case _:
-                        self.logger.critical("Invalid action: {action}")
-                self.logger.info("%s %sed.", extension, action)
+                        print(f"Invalid action: {action}")
 
             # If action fails
             except Exception as err:  # pylint: disable=broad-exception-caught
-                self.logger.error("%sing - %s.", action, err)
-                errors[extension] = err
+                print("%sing - %s.", action, err)
+                errors.append(ExtensionError(extension, err.args))
 
         return len(errors) == 0, errors
 
-    def load_all_extensions(self, exclude: list[str] = None) -> (bool, {}):
-        """Load all extension from ext folder
+    async def load_all_extensions(
+        self, exclude: ExtensionsList | None = None
+    ) -> ExtensionUpdateResponse:
+        """Abstracted method to load all extensions.
 
-        Parameters
-        -----------
-        `exclude ([str])`:
-        The list of extensions that should be excluded from loading.
-
-        Returns
-        --------
-        `was_success (boolean)`:
-        Specifies whether loading was successful or not.
+        Args:
+        exclude
+            The list of extensions that needs to be excluded from loading.
         """
-        return self._manage_all_extensions("load", exclude)
+        return await self._manage_all_extensions(ExtensionActions.LOAD, exclude)
 
-    def reload_all_extensions(self, exclude: list[str] = None) -> (bool, {}):
-        """Reload all extension from ext folder
+    async def reload_all_extensions(
+        self, exclude: ExtensionsList | None = None
+    ) -> ExtensionUpdateResponse:
+        """Abstracted method to reload all extensions.
 
-        Parameters
-        -----------
-        `exclude ([str])`:
-        The list of extensions that should be excluded from reloading.
-
-        Returns
-        --------
-        `was_success (boolean)`:
-        Specifies whether reloading was successful or not.
+        Args:
+        exclude
+            The list of extensions that needs to be excluded from reloading.
         """
+        return await self._manage_all_extensions(ExtensionActions.RELOAD, exclude)
 
-        return self._manage_all_extensions("reload", exclude)
+    async def unload_all_extensions(
+        self, exclude: ExtensionsList | None = None
+    ) -> ExtensionUpdateResponse:
+        """Abstracted method to unload all extensions.
 
-    def unload_all_extensions(self, exclude: list[str] = None) -> (bool, {}):
-        """Unload all extension from ext folder
-
-        Parameters
-        -----------
-        `exclude ([str])`:
-        The list of extensions that should be excluding from unloading.
-
-        Returns
-        --------
-        `was_sucess (boolean)`:
-        Specifies whether unloading was successful or not.
+        Args:
+        exclude
+            The list of extensions that needs to be excluded from unloading.
         """
+        return await self._manage_all_extensions(ExtensionActions.UNLOAD, exclude)
 
-        return self._manage_all_extensions("unload", exclude)
+    async def load_extensions(
+        self, extensions: ExtensionsList
+    ) -> ExtensionUpdateResponse:
+        """Abstracted method to load one or more extensions.
+
+        Args:
+        extensions
+            The list of extensions that needs to be loaded.
+        """
+        return await self._manage_all_extensions(
+            ExtensionActions.LOAD,
+            include_only=extensions,
+        )
+
+    async def reload_extensions(
+        self, extensions: ExtensionsList
+    ) -> ExtensionUpdateResponse:
+        """Abstracted method to reload one or more extensions.
+
+        Args:
+        extensions
+            The list of extensions that needs to be reloaded.
+        """
+        return await self._manage_all_extensions(
+            ExtensionActions.RELOAD,
+            include_only=extensions,
+        )
+
+    async def unload_extensions(
+        self, extensions: ExtensionsList
+    ) -> ExtensionUpdateResponse:
+        """Abstracted method to unload one or more extensions.
+
+        Args:
+        extensions
+            The list of extensions that needs to be unloaded.
+        """
+        return await self._manage_all_extensions(
+            ExtensionActions.UNLOAD,
+            include_only=extensions,
+        )

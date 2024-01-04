@@ -1,23 +1,22 @@
 """Executes when bot package runs."""
-from os import getenv
-from discord import Intents
-from dotenv import load_dotenv
+# Standard Libraries.
+import os
 
+# Third Party Libraries.
+import discord
+import dotenv
+
+# Project Modules.
 from bot.bot import Bot
-from bot.log import setup_logger
+from bot.constants import InternalConstants
 
-load_dotenv()
+# Get secrets.
+dotenv.load_dotenv(InternalConstants.DOTENV_PATH)
+DISCORD_TOKEN = os.getenv(InternalConstants.DISCORD_TOKEN_NAME)
 
-# Setups logger
-LOG_LEVEL = getenv("LOG_LEVEL")
-setup_logger(LOG_LEVEL)
-
-
-# Starts the bot
-TOKEN = getenv("TOKEN")
-bot = Bot(
-    command_prefix="!",
-    intents=Intents.none(),
-    help_command=None,
-)
-bot.run(TOKEN)
+if DISCORD_TOKEN is not None:
+    # Starts the bot.
+    bot = Bot(command_prefix="!", intents=discord.Intents.none(), help_command=None)
+    bot.run(DISCORD_TOKEN)
+else:
+    print("Discord Token is none bot exiting")
