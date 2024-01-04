@@ -1,3 +1,4 @@
-py-cord
+discord.py
 python-dotenv
 psutil
+pylint
