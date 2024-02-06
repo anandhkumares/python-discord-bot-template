@@ -1,4 +1,5 @@
 """Subclasses bot to add extra functionalities."""
+
 # Standard Libraries.
 from enum import Enum
 import pathlib
@@ -9,6 +10,9 @@ from discord.ext import commands
 
 # Project Modules.
 from bot.constants import InternalConstants
+from bot.log import get_logger
+
+log = get_logger(__name__)
 
 
 class ExtensionActions(Enum):
@@ -78,7 +82,7 @@ class Bot(commands.Bot):
     async def on_ready(self) -> None:
         """Runs when bot is ready. It saves the time and logs the message to console"""
         self.start_time = round(time.time())
-        print(f"{self.user} is ready!")
+        log.info(" %s is ready!", self.user)
         await self.load_all_extensions()
 
     async def _manage_all_extensions(
@@ -129,16 +133,21 @@ class Bot(commands.Bot):
                 match action:
                     case ExtensionActions.LOAD:
                         await self.load_extension(extension)
+                        log.info("%s succesfully loaded!", extension)
                     case ExtensionActions.RELOAD:
                         await self.reload_extension(extension)
+                        log.info("%s succesfully reloaded!", extension)
                     case ExtensionActions.UNLOAD:
                         await self.unload_extension(extension)
+                        log.info("%s succesfully unloaded!", extension)
                     case _:
-                        print(f"Invalid action: {action}")
+                        log.error(
+                            "Invalid action to perform over extension: %s", action
+                        )
 
             # If action fails
             except Exception as err:  # pylint: disable=broad-exception-caught
-                print("%sing - %s.", action, err)
+                log.critical("Error while %sing - %s.", action, err)
                 errors.append(ExtensionError(extension, err.args))
 
         return len(errors) == 0, errors
