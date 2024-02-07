@@ -41,6 +41,6 @@ class LoggingConfig:
     """Config for logging and all handlers."""
 
     TIMED_ROTATING_HANDLER = TimedRotatingFileHandlerConfig
-    LOG_FILE_PATH = pathlib.Path("../logs", "bot.log")
+    LOG_FILE_PATH = pathlib.Path("logs", "bot.log")
     DEFAULT_LOG_LEVEL = logging.DEBUG
     CLEAR_EXISTING_LOGS = True
