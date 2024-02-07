@@ -88,6 +88,9 @@ class Bot(commands.Bot):
         """Runs when bot is ready. It saves the time and logs the message to console"""
         self.start_time = round(time.time())
         log.info(" %s is ready!", self.user)
+
+    async def setup_hook(self) -> None:
+        """Default async initialisation method for discord.py."""
         await self.load_all_extensions()
 
     async def _manage_all_extensions(
