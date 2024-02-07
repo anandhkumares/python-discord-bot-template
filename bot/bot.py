@@ -92,6 +92,7 @@ class Bot(commands.Bot):
     async def setup_hook(self) -> None:
         """Default async initialisation method for discord.py."""
         await self.load_all_extensions()
+        await self.tree.sync()
 
     async def _manage_all_extensions(
         self,
