@@ -4,5 +4,18 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"editor.defaultFormatter": "ms-python.black-formatter",
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-python.python",
+			"ms-python.black-formatter",
+			"ms-python.mypy-type-checker",
+			"ms-python.vscode-pylance",
+			"ms-python.pylint",
+			"ms-python.debugpy",
+			"Gruntfuggly.todo-tree"
+		]
+	}
 }
