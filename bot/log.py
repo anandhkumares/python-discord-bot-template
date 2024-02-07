@@ -38,7 +38,7 @@ def setup_logger(log_level_name: str | None) -> None:
     setup_log_dir(log_file, LoggingConfig.CLEAR_EXISTING_LOGS)
 
     numeric_log_level = logging.getLevelNamesMapping().get(
-        log_level_name, LoggingConfig.DEFAULT_LOG_LEVEL
+        log_level_name.upper(), LoggingConfig.DEFAULT_LOG_LEVEL
     )
 
     # Logger
