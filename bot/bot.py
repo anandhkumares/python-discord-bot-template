@@ -67,10 +67,15 @@ class Bot(commands.Bot):
         The time bot started in seconds since the Epoch.
 
     Methods:
-    on_ready
-        Runs when bot is ready.
-    _manage_all_extensions
-        Manage all extensions.
+        on_ready
+        setup_hook
+        _manage_all_extensions.
+        load_all_extensions.
+        reload_all_extensions.
+        unload_all_extensions
+        load_extensions
+        reload_extensions
+        unload_extensions
     """
 
     start_time: int
